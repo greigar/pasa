@@ -9,10 +9,3 @@
 * DSP - Demand Side Participation
 * LOLP - Loss of Load Probability
 
-## Processing
-
-In the ST PASA files there is a column called "Aggregate PASA availability" and then in the MT PASA files there is a column called "PASAAVAILABILITY_SCHEDULED".
-
-I'm going to tentatively say that these two columns are equivalent -- but dealing with different time frames and granularity. As far as I understand they both exclude semi-scheduled or non-scheduled (semi-scheduled is generally larger utility wind or solar, non scheduled is small wind).
-
-
