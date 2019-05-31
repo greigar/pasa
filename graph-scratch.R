@@ -49,3 +49,23 @@ stpasa[[3]] %>% transmute(
                   facet_wrap(~region)
 
 
+
+# region_solutions - demand
+st.region_solutions %>% filter(runtype == "OUTAGE_LRC") %>%
+                ggplot(aes(x = interval_datetime, y = demand10)) + geom_line(colour = "green", alpha=0.7)  +
+                  geom_line(aes(y = demand50), colour = "orange", alpha = 0.7) +
+                  geom_line(aes(y = demand90), colour = "red", alpha = 0.7) +
+                  geom_line(aes(y = aggregatepasaavailability), colour = "black", alpha = 1) +
+                  facet_wrap(~regionid)
+
+# interconnector_solution
+st.interconnector_solutions %>%
+  ggplot(aes(interval_datetime, calculatedexportlimit)) + geom_line(colour = "red") +
+    geom_line(aes(y = calculatedimportlimit), colour = "green", alpha = 0.5) +
+    facet_wrap(~interconnectorid)
+
+# constraint_solution
+st.constraint_solutions %>%
+  ggplot(aes(interval_datetime, capacityrhs)) + geom_line() +
+    facet_wrap(~constraintid)
+

@@ -46,8 +46,16 @@ gn <- function(dataset, pattern = "*") {
   dataset_names[search_results]
 }
 
-stpasa <- read_pasa_file("data/PUBLIC_STPASA_201905280000_0000000308402609.zip")
-mtpasa <- read_pasa_file("data/PUBLIC_MTPASA_201905270800_0000000308428362.zip")
-region <- read_pasa_file("data/PUBLIC_MTPASAREGIONAVAILABILITY_201905271800_0000000308393202.zip")
+
+read_pasa_files <- function(pattern) {
+  print(str_glue("loading {pattern}"))
+  files <- list.files("data", full.names = TRUE, pattern = pattern)
+  map(files, read_pasa_file)
+}
+
+
+stpasa <- read_pasa_files("_STPASA_")
+mtpasa <- read_pasa_files("_MTPASA_")
+region <- read_pasa_files("MTPASAREGIONAVAILABILITY")
 
 
