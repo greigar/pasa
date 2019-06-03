@@ -48,3 +48,29 @@ xgather <- x12 %>% select(-run_datetime, -run_datetime2, -agg_diff) %>%
 ggplot(xgather, aes(x = interval_datetime, y = apa, colour = rt)) + geom_line() + facet_wrap(~regionid)
 
 #######################################
+# TODO
+#######################################
+
+st.avail <- st.region_solutions %>%
+              filter(runtype == "OUTAGE_LRC") %>%
+              select(run_datetime, interval_datetime, regionid, aggregatepasaavailability)
+
+max_select <- st.avail %>% group_by(regionid, interval_datetime) %>% summarise(run_datetime = max(run_datetime))
+
+st.avail_merge <- inner_join(st.avail, max_select)
+
+ggplot(st.avail_merge,
+       aes(x = interval_datetime,
+           y = aggregatepasaavailability)) +
+       geom_line(colour = "red") +
+       geom_line(data = st.avail,
+                 aes(x = interval_datetime,
+                     y = aggregatepasaavailability,
+                     colour = run_datetime,
+                     group = run_datetime),
+                 alpha = 0.15,
+                 show.legend = FALSE) +
+facet_wrap(~regionid)
+
+
+

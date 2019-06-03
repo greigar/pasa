@@ -49,7 +49,7 @@ gn <- function(dataset, pattern = "*") {
 
 read_pasa_files <- function(pattern) {
   print(str_glue("loading {pattern}"))
-  files <- list.files("data", full.names = TRUE, pattern = pattern)
+  files <- list.files("data/raw", full.names = TRUE, pattern = pattern)
   map(files, read_pasa_file)
 }
 

@@ -21,7 +21,7 @@ download_file <- function(filename) {
   print(paste0("Downloading: ", filename))
 
   download_from <- paste0(root_url, filename)
-  download_to   <- paste0("data/",  filename)
+  download_to   <- paste0("data/raw/",  filename)
 
   response <- GET(download_from)
   bin <- content(response, "raw")
