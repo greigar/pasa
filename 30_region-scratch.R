@@ -1,15 +1,5 @@
 # Region data set
 
-region.availability <- map_dfr(region, 3)
-
-# Convert date char to date
-region.availability$DAY              <- ymd_hms(region.availability$DAY)
-region.availability$PUBLISH_DATETIME <- ymd_hms(region.availability$PUBLISH_DATETIME)
-
-names(region.availability) <- str_to_lower(names(region.availability))
-
-region.run_times <- unique(region.availability$publish_datetime)
-
 ###################
 # Look at NSW1
 ###################

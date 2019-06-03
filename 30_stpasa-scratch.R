@@ -1,22 +1,5 @@
 # ST PASA
 
-st.region_solutions         <- map_dfr(stpasa, 3)
-st.interconnector_solutions <- map_dfr(stpasa, 4)
-st.constraint_solutions     <- map_dfr(stpasa, 5)
-
-# Convert date char to date
-st.region_solutions$INTERVAL_DATETIME          <- ymd_hms(st.region_solutions$INTERVAL_DATETIME)
-st.region_solutions$RUN_DATETIME               <- ymd_hms(st.region_solutions$RUN_DATETIME)
-st.interconnector_solutions$INTERVAL_DATETIME  <- ymd_hms(st.interconnector_solutions$INTERVAL_DATETIME)
-st.constraint_solutions$INTERVAL_DATETIME      <- ymd_hms(st.constraint_solutions$INTERVAL_DATETIME)
-
-names(st.region_solutions)         <- str_to_lower(names(st.region_solutions))
-names(st.interconnector_solutions) <- str_to_lower(names(st.interconnector_solutions))
-names(st.constraint_solutions)     <- str_to_lower(names(st.constraint_solutions))
-
-st.run_times <- unique(st.region_solutions$run_datetime)
-
-
 ##############################################################################
 # region_solutions - look at AGGREGATEPASAAVAILABILITY
 ##############################################################################
