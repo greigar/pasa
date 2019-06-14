@@ -11,3 +11,4 @@ st.constraint_solutions     <- map_dfr(stpasa, 5) %>% cdt
 
 st.run_times <- unique(st.region_solutions$run_datetime)
 
+rm(stpasa)
