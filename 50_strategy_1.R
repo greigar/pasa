@@ -5,6 +5,9 @@
 # ENERGYUNCONSTRAINEDCAPACITY + ENERGYCONSTRAINEDCAPACITY = PASAAVAILABILITY_SCHEDULED
 # DEMAND10/50 does not appear to change beteween PUBLISH_DATETIMEs
 
+library(caret)
+# library(mlbench)
+
 source("helpers.R")
 source("20_load_aemo_units.R")
 
@@ -39,11 +42,35 @@ avail_min_max_pas <- avail_min_max_pas %>% mutate(pas_diff = pas_min - pas_max)
 avail_min_max_pas %>% ggplot(aes(x = DAY, y = pas_diff)) + geom_line()
 avail_min_max_pas %>% filter(abs(pas_diff) > 40 & DAY > ymd(20200101) & DAY < ymd(20200501))
 
+#
+# Do a rough knn on the data to see which stations lies closest
+#
 
+candidates  <- tibble(CAPACITY = abs(avail_min_max_pas$pas_diff))
+fit_knn3    <- knn3(STATION ~ CAPACITY, data = aemo_units_nsw1, k = 1)
+predictions <- predict(fit_knn3, candidates)
+results     <- as_tibble(cbind(avail_min_max_pas, predictions))
+
+results_by_station <- results %>% gather(key = "STATION", value = "probability", 5:36) %>% filter(probability != 0)
+
+results_by_station %>% ggplot(aes(x = DAY, y = pas_diff)) + geom_line() +
+                         geom_point(aes(y = pas_diff, colour = STATION))
+
+
+results %>% filter(SH > 0) %>% ggplot(aes(x = DAY, y = pas_diff)) + geom_line()
+
+
+stop("it")
+
+########################################
 # Plot PASA against DEMAND
+########################################
 avail_max %>% ggplot(aes(x = DAY, y = PASAAVAILABILITY_SCHEDULED)) + geom_line() + geom_line(aes(y = DEMAND50), colour = "blue")
 
+
+########################################
 # Plot PASA against CAPACITY
+########################################
 
 # filter by capacity
 f <- function() { avail_min_max_pas %>% filter(pas_diff <= -10 & pas_diff > -110) %>% ggplot(aes(x = DAY, y = pas_diff, colour = pas_diff, group = pas_diff)) + geom_point() }
@@ -52,16 +79,26 @@ f() + geom_hline(data = caps_loss, aes(yintercept = capacity_drop), colour = "re
 
 
 # filter by day
-f <- function () { avail_min_max_pas %>% filter(DAY > ymd(20200301) & DAY < ymd(20200402)) %>% ggplot(aes(x = DAY, y = pas_diff)) + geom_point() + facet_wrap(~pas_diff) }
-caps_loss <- aemo_units_nsw1 %>% transmute(capacity = CAPACITY, capacity_loss = CAPACITY * LOSS_FACTOR, capacity_drop = capacity * -1, capacity_drop_loss = capacity_loss * -1)
-f() + geom_hline(data = caps_loss, aes(yintercept = capacity_drop), colour = "red", alpha = 0.1) + geom_hline(data = caps_loss, aes(yintercept = capacity_drop_loss), colour = "green", alpha = 0.2) + geom_hline(data = caps_loss, aes(yintercept = capacity), colour = "red", alpha = 0.1) + geom_hline(data = caps_loss, aes(yintercept = capacity_loss), colour = "green", alpha = 0.2)
+caps_loss <- aemo_units_nsw1 %>%
+               transmute(capacity           = CAPACITY,
+                         capacity_loss      = CAPACITY      * LOSS_FACTOR,
+                         capacity_drop      = capacity      * -1,
+                         capacity_drop_loss = capacity_loss * -1)
 
+plot_avail <- function(date_from, date_to) {
 
+  avail_data           <- avail_min_max_pas %>% filter(DAY >= ymd(date_from) & DAY < ymd(date_to) & abs(pas_diff) >= 47)
+  mw_range             <- range(abs(avail_data$pas_diff))
+  caps_loss_candidates <- caps_loss %>% filter(capacity >= mw_range[1] - 50 & capacity <= mw_range[2] + 50)
 
+    ggplot(avail_data, aes(x = DAY, y = pas_diff)) + geom_point() + facet_wrap(~pas_diff) +
+      geom_hline(data = caps_loss_candidates, aes(yintercept = capacity_drop),      colour = "red",   alpha = 0.1) +
+      geom_hline(data = caps_loss_candidates, aes(yintercept = capacity_drop_loss), colour = "green", alpha = 0.2) +
+      geom_hline(data = caps_loss_candidates, aes(yintercept = capacity),           colour = "red",   alpha = 0.1) +
+      geom_hline(data = caps_loss_candidates, aes(yintercept = capacity_loss),      colour = "green", alpha = 0.2)
+}
 
-stop("it")
-
-#
+plot_avail(20200301, 20200402)
 
 # Scratch
 
