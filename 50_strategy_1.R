@@ -5,19 +5,15 @@
 # ENERGYUNCONSTRAINEDCAPACITY + ENERGYCONSTRAINEDCAPACITY = PASAAVAILABILITY_SCHEDULED
 # DEMAND10/50 does not appear to change beteween PUBLISH_DATETIMEs
 
-library(caret)
-# library(mlbench)
+library(caret) # knn3
 
 source("helpers.R")
 source("20_load_aemo_units.R")
 
 if (file.exists("data/processed/region.availability_nsw1.csv.gz")) {
-  print("reading file region.availability_nsw1.csv.gz")
   region.availability_nsw1 <- read_csv("data/processed/region.availability_nsw1.csv.gz")
 } else {
   source("20_load_region.R")
-  region.availability_nsw1 <- region.availability %>% filter(REGIONID == "NSW1")
-  write_csv(region.availability_nsw1, "data/processed/region.availability_nsw1.csv.gz")
 }
 
 region.availability_nsw1 <- region.availability_nsw1 %>% select(-(1:4), -LASTCHANGED, -REGIONID)
@@ -28,16 +24,18 @@ pd_min_max <- region.availability_nsw1 %>%
                 summarise(PUBLISH_DATETIME_MIN = min(PUBLISH_DATETIME),
                           PUBLISH_DATETIME_MAX = max(PUBLISH_DATETIME))
 
-# can we do an OR here?
-avail_min <- inner_join(pd_min_max, region.availability_nsw1, by = c("DAY" = "DAY", "PUBLISH_DATETIME_MIN" = "PUBLISH_DATETIME")) %>% select(-PUBLISH_DATETIME_MAX)
-avail_max <- inner_join(pd_min_max, region.availability_nsw1, by = c("DAY" = "DAY", "PUBLISH_DATETIME_MAX" = "PUBLISH_DATETIME")) %>% select(-PUBLISH_DATETIME_MIN)
+# get the earliest and latest published schedule for each day
+avail_min <- semi_join(region.availability_nsw1, pd_min_max,
+                       by = c("DAY" = "DAY", "PUBLISH_DATETIME" = "PUBLISH_DATETIME_MIN"))
+avail_max <- semi_join(region.availability_nsw1, pd_min_max,
+                       by = c("DAY" = "DAY", "PUBLISH_DATETIME" = "PUBLISH_DATETIME_MAX"))
 
 # Join Min and Max - to compare
 avail_min_pas <- avail_min %>% select(DAY, pas_min = PASAAVAILABILITY_SCHEDULED)
 avail_max_pas <- avail_max %>% select(DAY, pas_max = PASAAVAILABILITY_SCHEDULED)
 
-avail_min_max_pas <- inner_join(avail_min_pas, avail_max_pas, by = c("DAY"))
-avail_min_max_pas <- avail_min_max_pas %>% mutate(pas_diff = pas_min - pas_max)
+avail_min_max_pas <- inner_join(avail_min_pas, avail_max_pas, by = c("DAY")) %>%
+                       mutate(pas_diff = pas_min - pas_max)
 
 avail_min_max_pas %>% ggplot(aes(x = DAY, y = pas_diff)) + geom_line()
 avail_min_max_pas %>% filter(abs(pas_diff) > 40 & DAY > ymd(20200101) & DAY < ymd(20200501))
@@ -46,19 +44,22 @@ avail_min_max_pas %>% filter(abs(pas_diff) > 40 & DAY > ymd(20200101) & DAY < ym
 # Do a rough knn on the data to see which stations lies closest
 #
 
+aemo_stations_nsw1 <- aemo_units_nsw1 %>% select(STATION, CAPACITY) %>% unique
+
 candidates  <- tibble(CAPACITY = abs(avail_min_max_pas$pas_diff))
-fit_knn3    <- knn3(STATION ~ CAPACITY, data = aemo_units_nsw1, k = 1)
+fit_knn3    <- knn3(STATION ~ CAPACITY, data = aemo_stations_nsw1, k = 1)
 predictions <- predict(fit_knn3, candidates)
 results     <- as_tibble(cbind(avail_min_max_pas, predictions))
 
 results_by_station <- results %>% gather(key = "STATION", value = "probability", 5:36) %>% filter(probability != 0)
 
-results_by_station %>% ggplot(aes(x = DAY, y = pas_diff)) + geom_line() +
-                         geom_point(aes(y = pas_diff, colour = STATION))
+results_by_station <- inner_join(results_by_station, aemo_units_nsw1, by = "STATION") %>%
+                        mutate(diff = abs(CAPACITY - abs(pas_diff))) %>%
+                        arrange(diff)
 
 
-results %>% filter(SH > 0) %>% ggplot(aes(x = DAY, y = pas_diff)) + geom_line()
-
+results_by_station %>% ggplot(aes(x = DAY, y = pas_diff)) + geom_line() + geom_point(aes(y = pas_diff, colour = STATION))
+results_by_station %>% filter(CAPACITY > 10 & diff > 100) %>% ggplot(aes(x = DAY, y = diff, colour = STATION)) + geom_point()
 
 stop("it")
 
@@ -100,17 +101,17 @@ plot_avail <- function(date_from, date_to) {
 
 plot_avail(20200301, 20200402)
 
-# Scratch
-
+########################################
+# Plot PUBLISH_DATETIMEs
+########################################
 region.availability_nsw1_publish_datetimes <- unique(region.availability_nsw1$PUBLISH_DATETIME) %>% sort
 
 rt1 <- region.availability_nsw1_publish_datetimes[1]
 rt2 <- region.availability_nsw1_publish_datetimes[2]
 
-
-# Plot PUBLISH_DATETIMEs
 data <- region.availability_nsw1 %>% filter(PUBLISH_DATETIME %in% c(rt1, rt2)) %>% select(PUBLISH_DATETIME, DAY, PASAAVAILABILITY_SCHEDULED)
 ggplot(data, aes(x = DAY, y = PASAAVAILABILITY_SCHEDULED, colour = as.factor(PUBLISH_DATETIME) )) + geom_line(alpha = 0.4, show.legend = FALSE)
+
 data <- region.availability_nsw1 %>% select(PUBLISH_DATETIME, DAY, PASAAVAILABILITY_SCHEDULED)
 ggplot(data, aes(x = DAY, y = PASAAVAILABILITY_SCHEDULED, colour = as.factor(PUBLISH_DATETIME) )) + geom_line(alpha = 0.4, show.legend = FALSE)
 
@@ -120,5 +121,4 @@ region_rt2 <- region.availability_nsw1 %>% filter(PUBLISH_DATETIME == rt2) %>% s
 
 data <- region.availability_nsw1 %>% filter(DAY == ymd(20200309)) %>% select(PUBLISH_DATETIME, DAY, PASAAVAILABILITY_SCHEDULED)
 data$PASAAVAILABILITY_DIFFERENCE <- data$PASAAVAILABILITY_SCHEDULED - lag(data$PASAAVAILABILITY_SCHEDULED)
-
 

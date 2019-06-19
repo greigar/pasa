@@ -57,6 +57,12 @@ read_pasa_files <- function(pattern) {
   map(files, read_pasa_file)
 }
 
+# pattern = "PUBLIC_MTPASAREGIONAVAILABILITY_201......zip"
+unzip_archive_files <- function(pattern) {
+  archive_files <- list.files("data/raw", full.names = TRUE, pattern = pattern)
+  map(archive_files, unzip, exdir = "data/raw")
+  map(archive_files, function(x) file.rename(x, str_replace(x, "raw", "archive")))
+}
 
 #########################################################
 # Clean up date columns - # convert to date time
