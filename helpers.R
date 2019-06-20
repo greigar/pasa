@@ -2,6 +2,9 @@ library(tidyverse)
 library(lubridate)
 library(skimr)
 
+data_raw_path       <- function(filename) {str_glue("data/raw/",       filename)}
+data_processed_path <- function(filename) {str_glue("data/processed/", filename)}
+
 ################################################################################
 # Read in raw data files
 ################################################################################
@@ -57,6 +60,7 @@ read_pasa_files <- function(pattern) {
   map(files, read_pasa_file)
 }
 
+# Read archive zip files, unzip them and move to archive directory
 # pattern = "PUBLIC_MTPASAREGIONAVAILABILITY_201......zip"
 unzip_archive_files <- function(pattern) {
   archive_files <- list.files("data/raw", full.names = TRUE, pattern = pattern)
@@ -71,7 +75,7 @@ unzip_archive_files <- function(pattern) {
 cdt <- function (data) {
   data %>%
     mutate_at(vars(matches(
-      "LASTCHANGED|SETTLEMENTDATE|INTERVAL_DATETIME|PUBLISH_DATETIME|PERIOD_ENDING|DAY|RUN_DATETIME")),
+      "LATEST_OFFER_DATETIME|LASTCHANGED|SETTLEMENTDATE|INTERVAL_DATETIME|PUBLISH_DATETIME|PERIOD_ENDING|DAY|RUN_DATETIME")),
       ymd_hms)
 }
 

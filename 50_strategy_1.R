@@ -6,13 +6,13 @@
 # DEMAND10/50 does not appear to change beteween PUBLISH_DATETIMEs
 
 library(caret) # knn3
-
 source("helpers.R")
-source("20_load_aemo_units.R")
 
-if (file.exists("data/processed/region.availability_nsw1.csv.gz")) {
-  region.availability_nsw1 <- read_csv("data/processed/region.availability_nsw1.csv.gz")
+if (all(c("region.availability_nsw1", "aemo_units_nsw1") %in% ls())) {
+  print("Using current environment objects")
 } else {
+  print("Loading")
+  source("20_load_aemo_units.R")
   source("20_load_region.R")
 }
 
@@ -41,7 +41,7 @@ avail_min_max_pas %>% ggplot(aes(x = DAY, y = pas_diff)) + geom_line()
 avail_min_max_pas %>% filter(abs(pas_diff) > 40 & DAY > ymd(20200101) & DAY < ymd(20200501))
 
 #
-# Do a rough knn on the data to see which stations lies closest
+# Do a rough knn on the data to see which STATIONS lie closest
 #
 
 aemo_stations_nsw1 <- aemo_units_nsw1 %>% select(STATION, CAPACITY) %>% unique
@@ -53,7 +53,7 @@ results     <- as_tibble(cbind(avail_min_max_pas, predictions))
 
 results_by_station <- results %>% gather(key = "STATION", value = "probability", 5:36) %>% filter(probability != 0)
 
-results_by_station <- inner_join(results_by_station, aemo_units_nsw1, by = "STATION") %>%
+results_by_station <- inner_join(results_by_station, aemo_stations_nsw1, by = "STATION") %>%
                         mutate(diff = abs(CAPACITY - abs(pas_diff))) %>%
                         arrange(diff)
 
