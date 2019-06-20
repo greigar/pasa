@@ -37,31 +37,49 @@ avail_max_pas <- avail_max %>% select(DAY, pas_max = PASAAVAILABILITY_SCHEDULED)
 avail_min_max_pas <- inner_join(avail_min_pas, avail_max_pas, by = c("DAY")) %>%
                        mutate(pas_diff = pas_min - pas_max)
 
-avail_min_max_pas %>% ggplot(aes(x = DAY, y = pas_diff)) + geom_line()
-avail_min_max_pas %>% filter(abs(pas_diff) > 40 & DAY > ymd(20200101) & DAY < ymd(20200501))
-
 #
 # Do a rough knn on the data to see which STATIONS lie closest
 #
 
-aemo_stations_nsw1 <- aemo_units_nsw1 %>% select(STATION, CAPACITY) %>% unique
+# do combinations of station and unit
+# assume stations' units are all the same CAPACITY
+# z <- c(700, 700, 700, 700)
+# map(1:4, function(x) combn(z, x) %>% colSums) %>% unlist %>% unique
+# aemo_stations_nsw1 <- aemo_units_nsw1 %>% select(STATION, CAPACITY) %>% unique
+aemo_stations_nsw1 <- aemo_units_nsw1 %>% select(STATION, DUID, CAPACITY) %>%
+                                          group_by(STATION) %>%
+                                          mutate(cs = cumsum(CAPACITY)) %>%
+                                          ungroup %>%
+                                          select(DUID, CAPACITY = cs)
 
 candidates  <- tibble(CAPACITY = abs(avail_min_max_pas$pas_diff))
-fit_knn3    <- knn3(STATION ~ CAPACITY, data = aemo_stations_nsw1, k = 1)
+fit_knn3    <- knn3(DUID ~ CAPACITY, data = aemo_stations_nsw1, k = 1)
 predictions <- predict(fit_knn3, candidates)
 results     <- as_tibble(cbind(avail_min_max_pas, predictions))
 
-results_by_station <- results %>% gather(key = "STATION", value = "probability", 5:36) %>% filter(probability != 0)
+results_by_station <- results %>% gather(key = "DUID", value = "probability", 5:53) %>% filter(probability != 0)
 
-results_by_station <- inner_join(results_by_station, aemo_stations_nsw1, by = "STATION") %>%
+results_by_station <- inner_join(results_by_station, aemo_stations_nsw1, by = "DUID") %>%
                         mutate(diff = abs(CAPACITY - abs(pas_diff))) %>%
                         arrange(diff)
 
-
-results_by_station %>% ggplot(aes(x = DAY, y = pas_diff)) + geom_line() + geom_point(aes(y = pas_diff, colour = STATION))
-results_by_station %>% filter(CAPACITY > 10 & diff > 100) %>% ggplot(aes(x = DAY, y = diff, colour = STATION)) + geom_point()
-
 stop("it")
+
+########################################
+# Plots of results
+########################################
+
+avail_min_max_pas %>% ggplot(aes(x = DAY, y = pas_diff)) + geom_line()
+avail_min_max_pas %>% filter(abs(pas_diff) > 40 & DAY > ymd(20200101) & DAY < ymd(20200501))
+
+results_by_station %>% filter(DAY > ymd(20190101) & DAY < ymd(20190701)) %>%
+                         ggplot(aes(x = DAY, y = pas_diff)) + geom_line() +
+                         geom_jitter(aes(y = pas_diff, colour = DUID, size = diff/CAPACITY), height = 100, alpha = 0.5)
+
+results_by_station %>% filter(CAPACITY > 10 & diff > 100) %>% ggplot(aes(x = DAY, y = diff, colour = DUID)) + geom_point()
+
+results_by_station %>% filter(diff < 100) %>% ggplot(aes(x = DAY, y = diff, colour = DUID)) + geom_jitter(height = 2, alpha = 0.5)
+
 
 ########################################
 # Plot PASA against DEMAND

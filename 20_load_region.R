@@ -10,9 +10,9 @@ filename_nsw1 <- data_processed_path("region.availability_nsw1.csv.gz")
 
 if (file.exists(filename)) {
 
-  print("Loading region from file")
-  region.availability      <- read_csv(filename)
-  region.availability_nsw1 <- read_csv(filename_nsw1)
+  print("Vrooming region from file")
+  region.availability      <- vroom(filename)
+  region.availability_nsw1 <- vroom(filename_nsw1)
 
 } else {
 

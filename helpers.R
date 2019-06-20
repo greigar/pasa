@@ -1,6 +1,7 @@
 library(tidyverse)
 library(lubridate)
 library(skimr)
+library(vroom) # fast import
 
 data_raw_path       <- function(filename) {str_glue("data/raw/",       filename)}
 data_processed_path <- function(filename) {str_glue("data/processed/", filename)}
