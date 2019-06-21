@@ -11,7 +11,7 @@ source("helpers.R")
 if (all(c("region.availability_nsw1", "aemo_units_nsw1") %in% ls())) {
   print("Using current environment objects")
 } else {
-  print("Loading")
+  print("Loading from processed files")
   source("20_load_aemo_units.R")
   source("20_load_region.R")
 }
