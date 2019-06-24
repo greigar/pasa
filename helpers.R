@@ -2,9 +2,15 @@ library(tidyverse)
 library(lubridate)
 library(skimr)
 library(vroom) # fast import
+library(httr)
+library(caret) # knn3 for strategy 1
 
-data_raw_path       <- function(filename) {str_glue("data/raw/",       filename)}
+data_raw_pathname   <- "data/raw/"
+data_raw_path       <- function(filename) {str_glue(data_raw_pathname, filename)}
 data_processed_path <- function(filename) {str_glue("data/processed/", filename)}
+
+nemweb_root_archive <- "http://www.nemweb.com.au/REPORTS/ARCHIVE/"
+nemweb_root_current <- "http://www.nemweb.com.au/REPORTS/CURRENT/"
 
 ################################################################################
 # Read in raw data files
@@ -57,15 +63,43 @@ gn <- function(dataset, pattern = "*") {
 
 read_pasa_files <- function(pattern) {
   print(str_glue("loading {pattern}"))
-  files <- list.files("data/raw", full.names = TRUE, pattern = pattern)
+  files <- list.files(data_raw_pathname, full.names = TRUE, pattern = pattern)
   map(files, read_pasa_file)
 }
 
+mkdirs <- function() {
+  map(c("data", "data/raw", "data/processed", "data/archive"), dir.create, showWarnings = FALSE)
+}
+
+# Download files from AEMO site
+get_files <- function(root_url, pattern) {
+
+  file_index    <- GET(root_url)
+  index_content <- content(file_index, "text")
+  file_list     <- str_split(index_content, "<br>")
+
+  filenames <- map(file_list, str_extract, pattern)[[1]] %>%
+               na.omit %>%
+               str_remove('>')
+
+  download_file <- function(filename) {
+    print(paste0("Downloading: ", filename))
+
+    download_from <- paste0(root_url, filename)
+    download_to   <- paste0("data/raw/",  filename)
+
+    response <- GET(download_from)
+    bin <- content(response, "raw")
+    writeBin(bin, download_to)
+  }
+
+  map(filenames, download_file)
+}
+
 # Read archive zip files, unzip them and move to archive directory
-# pattern = "PUBLIC_MTPASAREGIONAVAILABILITY_201......zip"
 unzip_archive_files <- function(pattern) {
-  archive_files <- list.files("data/raw", full.names = TRUE, pattern = pattern)
-  map(archive_files, unzip, exdir = "data/raw")
+  archive_files <- list.files(data_raw_pathname, full.names = TRUE, pattern = pattern)
+  map(archive_files, unzip, exdir = data_raw_pathname)
   map(archive_files, function(x) file.rename(x, str_replace(x, "raw", "archive")))
 }
 
