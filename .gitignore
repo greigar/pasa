@@ -11,6 +11,7 @@
 # Output files from R CMD build
 /*.tar.gz
 *.png
+*.pdf
 
 # Output files from R CMD check
 /*.Rcheck/

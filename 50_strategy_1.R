@@ -1,12 +1,6 @@
 source("helpers.R")
-
-if (all(c("region.availability_nsw1", "aemo_units_nsw1") %in% ls())) {
-  print("Using current environment objects")
-} else {
-  print("Loading from processed files")
-  source("20_load_aemo_units.R")
-  source("20_load_region.R")
-}
+source("20_load_aemo_units.R")
+source("20_load_region.R")
 
 # looks like region.availability_nsw1 is sorted by PUBLISH_DATETIME and DAY...but sort anyway
 region.availability_nsw1 <- region.availability_nsw1         %>%
@@ -31,16 +25,6 @@ avail_max_pas <- avail_max %>% select(DAY, pas_max = PASAAVAILABILITY_SCHEDULED)
 
 avail_min_max_pas <- inner_join(avail_min_pas, avail_max_pas, by = c("DAY")) %>%
                        mutate(pas_diff = pas_min - pas_max)
-
-# combinations of station and unit - assume stations' units are all the same CAPACITY
-# aemo_stations_nsw1 <- aemo_units_nsw1 %>% select(STATION, CAPACITY) %>% unique
-# z <- c(700, 700, 700, 700)
-# map(1:4, function(x) combn(z, x) %>% colSums) %>% unlist %>% unique
-aemo_stations_nsw1 <- aemo_units_nsw1 %>% select(STATION, DUID, CAPACITY) %>%
-                                          group_by(STATION) %>%
-                                          mutate(cs = cumsum(CAPACITY)) %>%
-                                          ungroup %>%
-                                          select(DUID, CAPACITY = cs)
 
 # Do a rough knn on the data to see which STATIONS lie closest
 candidates  <- tibble(CAPACITY = abs(avail_min_max_pas$pas_diff))
